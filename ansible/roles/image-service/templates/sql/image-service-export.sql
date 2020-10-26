@@ -64,11 +64,85 @@ BEGIN
             harvestable,
             l.acronym  as "recognisedLicence",
             occurrence_id AS "occurrenceID",
+            audience AS "audience",
+            source AS "source",
+            contributor AS "contributor",
+            type AS "type",
+            created AS "created",
+            dc_references AS "references",
             TO_CHAR(date_uploaded :: DATE, 'yyyy-mm') AS "dateUploadedYearMonth"
         from image i
             left outer join license l ON l.id = i.recognised_license_id
         where date_deleted is NULL
         )
         TO '{{image_service_export_dir | default('/data/image-service/exports') }}/images-index.csv' WITH CSV DELIMITER '$' HEADER;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION export_dataset(uid varchar) RETURNS void AS $$
+DECLARE
+    output_file CONSTANT varchar := CONCAT(CONCAT( '{{ image_service_export_dir | default('/data/image-service/exports') }}/images-export-', uid), '.csv');
+BEGIN
+    EXECUTE format ('
+    COPY
+        (
+        select
+            image_identifier as "imageID",
+            original_filename as "identifier",
+            audience,
+            contributor,
+            created,
+            creator,
+            description,
+            mime_type as "format",
+            license,
+            publisher,
+            dc_references as "references",
+            rights_holder  as "rightsHolder",
+            source,
+            title,
+            type
+            from image i
+            where data_resource_uid = %L
+        )
+    TO %L (FORMAT CSV)'
+        , uid, output_file);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION export_dataset_mapping(uid varchar) RETURNS void AS $$
+DECLARE
+    output_file CONSTANT varchar := CONCAT(CONCAT( '{{image_service_export_dir | default('/data/image-service/exports') }}/images-mapping-', uid), '.csv');
+BEGIN
+    EXECUTE format ('
+    COPY
+        (
+        select
+            image_identifier as "imageID",
+            original_filename as "url"
+            from image i
+            where data_resource_uid = %L
+        )
+    TO %L (FORMAT CSV)'
+        , uid, output_file);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION export_mapping() RETURNS void AS $$
+DECLARE
+    output_file CONSTANT varchar :=  '{{image_service_export_dir | default('/data/image-service/exports') }}/images-mapping.csv';
+BEGIN
+    EXECUTE format ('
+    COPY
+        (
+        select
+            data_resource_uid,
+            image_identifier as "imageID",
+            original_filename as "url"
+            from image i
+            where data_resource_uid is NOT NULL
+        )
+    TO %L (FORMAT CSV)'
+        , output_file);
 END;
 $$ LANGUAGE plpgsql;
