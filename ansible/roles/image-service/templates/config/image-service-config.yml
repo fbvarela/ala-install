@@ -1,8 +1,12 @@
 grails:
   serverURL: "{{image_service_base_url}}{{image_service_context_path}}"
+  controllers:
+    upload:
+      maxFileSize: {{ image_service_max_file_size | default(1073741824) }}
+      maxRequestSize: {{ image_service_max_request_size | default(1073741824) }}
 
 server:
-  port: {{image_service_port}}
+  port: {{ image_service_port }}
 
 security:
   cas:
@@ -41,12 +45,12 @@ dataSource:
 
 imageservice:
   imagestore:
-    root: "/data/image-service/store"
+    root: "{{ image_service_imagestore_root | default('/data/image-service/store') }}"
+  exportDir: "{{ image_service_export_dir | default('/data/image-service/exports')}}"
+  batchUpload: "{{ image_service_batch_upload | default('/data/image-service/uploads  ')}}"
   apache:
     root: "{{ image_service_base_url }}/store/"
     multiple_roots: {% if multiple_root is defined %} "{{ multiple_roots }}" {% else %} "{{ image_service_base_url }}/store/" {% endif %}
-
-    exportDir: "{{ image_service_export_dir | default('/data/image-service/exports')}}"
 
 # skin
 skin:
@@ -88,3 +92,12 @@ swagger:
     - "{{ swagger_schemes | default('HTTPS') }}"
   consumes:
     - "application/json"
+
+# flyway config
+flyway:
+  enabled: {{ flyway_enabled | default(false) }}
+  validateOnMigrate: {{ flyway_validate_on_migrate | default(false) }}
+  ignoreMissingMigrations: {{ flyway_ignore_missing_migrations | default(true) }}
+
+spring:
+  flyway.out-of-order: true
